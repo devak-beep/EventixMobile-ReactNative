@@ -1,0 +1,207 @@
+{
+  "info": {
+    "name": "Epic 5 Payment Testing",
+    "description": "Complete test collection for Epic 5 Payment Simulation",
+    "version": "1.0.0"
+  },
+  "item": [
+    {
+      "name": "1. Register User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/users/register",
+          "host": ["{{base_url}}"],
+          "path": ["api", "users", "register"]
+        }
+      },
+      "description": "Register a new user. Save the _id as {{user_id}}"
+    },
+    {
+      "name": "2. Create Event",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Tech Conference 2026\",\n  \"description\": \"Annual tech conference\",\n  \"eventDate\": \"2026-06-15T10:00:00Z\",\n  \"totalSeats\": 100,\n  \"availableSeats\": 100\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/events",
+          "host": ["{{base_url}}"],
+          "path": ["api", "events"]
+        }
+      },
+      "description": "Create an event. Save the _id as {{event_id}}"
+    },
+    {
+      "name": "3. Lock Seats",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"eventId\": \"{{event_id}}\",\n  \"userId\": \"{{user_id}}\",\n  \"seats\": 2,\n  \"idempotencyKey\": \"lock-001\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/locks",
+          "host": ["{{base_url}}"],
+          "path": ["api", "locks"]
+        }
+      },
+      "description": "Lock 2 seats. Save the _id as {{lock_id}}"
+    },
+    {
+      "name": "4. Create Booking",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {},
+        "url": {
+          "raw": "{{base_url}}/api/bookings/{{lock_id}}/confirm",
+          "host": ["{{base_url}}"],
+          "path": ["api", "bookings", "{{lock_id}}", "confirm"]
+        }
+      },
+      "description": "Create booking from lock. Save booking._id as {{booking_id}}"
+    },
+    {
+      "name": "5. Payment - SUCCESS",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bookingId\": \"{{booking_id}}\",\n  \"force\": \"success\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/intent",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "intent"]
+        }
+      },
+      "description": "Test successful payment. Expect: CONFIRMED status"
+    },
+    {
+      "name": "6. Payment - FAILURE",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bookingId\": \"{{booking_id_2}}\",\n  \"force\": \"failure\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/intent",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "intent"]
+        }
+      },
+      "description": "Test failed payment. Expect: FAILED status, seats restored"
+    },
+    {
+      "name": "7. Payment - TIMEOUT",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bookingId\": \"{{booking_id_3}}\",\n  \"force\": \"timeout\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/intent",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "intent"]
+        }
+      },
+      "description": "Test timeout payment. Expect: PAYMENT_PENDING status (no change)"
+    },
+    {
+      "name": "8. Payment - ERROR Invalid Force",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"bookingId\": \"{{booking_id}}\",\n  \"force\": \"invalid\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/payments/intent",
+          "host": ["{{base_url}}"],
+          "path": ["api", "payments", "intent"]
+        }
+      },
+      "description": "Test error case. Expect: 400 Bad Request"
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "user_id",
+      "value": ""
+    },
+    {
+      "key": "event_id",
+      "value": ""
+    },
+    {
+      "key": "lock_id",
+      "value": ""
+    },
+    {
+      "key": "booking_id",
+      "value": ""
+    },
+    {
+      "key": "booking_id_2",
+      "value": ""
+    },
+    {
+      "key": "booking_id_3",
+      "value": ""
+    }
+  ]
+}

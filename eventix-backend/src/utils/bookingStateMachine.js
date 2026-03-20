@@ -1,0 +1,33 @@
+const BOOKING_STATUS = {
+  INITIATED: "INITIATED",
+  PAYMENT_PENDING: "PAYMENT_PENDING",
+  CONFIRMED: "CONFIRMED",
+  CANCELLED: "CANCELLED",
+  EXPIRED: "EXPIRED",
+  FAILED: "FAILED",
+};
+
+const ALLOWED_TRANSITIONS = {
+  INITIATED: [BOOKING_STATUS.PAYMENT_PENDING],
+
+  PAYMENT_PENDING: [
+    BOOKING_STATUS.CONFIRMED,
+    BOOKING_STATUS.CANCELLED,
+    BOOKING_STATUS.EXPIRED,
+    BOOKING_STATUS.FAILED,
+  ],
+
+  CONFIRMED: [BOOKING_STATUS.CANCELLED], // Allow cancellation of confirmed bookings
+  CANCELLED: [],
+  EXPIRED: [],
+  FAILED: [],
+};
+
+function canTransition(from, to) {
+  return ALLOWED_TRANSITIONS[from]?.includes(to);
+}
+
+module.exports = {
+  BOOKING_STATUS,
+  canTransition,
+};
