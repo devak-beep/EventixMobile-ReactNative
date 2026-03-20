@@ -1,0 +1,37 @@
+# APK
+*.apk
+*.aab
+
+# Node
+node_modules/
+eventix-mobile/node_modules/
+eventix-backend/node_modules/
+
+# Expo
+eventix-mobile/.expo/
+eventix-mobile/dist/
+
+# Android build
+eventix-mobile/android/.gradle/
+eventix-mobile/android/app/build/
+eventix-mobile/android/build/
+eventix-mobile/android/local.properties
+
+# iOS build
+eventix-mobile/ios/Pods/
+eventix-mobile/ios/build/
+eventix-mobile/ios/*.xcworkspace
+
+# Env files
+.env
+.env.local
+.env.production
+eventix-backend/.env
+eventix-backend/.env.local
+
+# Logs
+eventix-backend/logs/
+*.log
+
+# IDE
+.idea/
