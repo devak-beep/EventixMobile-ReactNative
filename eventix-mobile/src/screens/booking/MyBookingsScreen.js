@@ -14,18 +14,19 @@ import { BookingCardSkeleton } from '../../components/SkeletonLoader';
 import {
   getAllBookings, cancelBooking, getMyEvents,
   deleteEvent, getMyEventRequests, getPendingRequests,
-  approveRequest, rejectRequest
+  approveRequest, rejectRequest, getExpiredEvents
 } from '../../api';
 import api from '../../api';
 import RazorpayCheckout from 'react-native-razorpay';
 
 function AnimatedCard({ children, style, theme }) {
   const [pressed, setPressed] = useState(false);
+  const flatStyle = StyleSheet.flatten(style) || {};
   return (
     <Pressable onPressIn={() => setPressed(true)} onPressOut={() => setPressed(false)}>
       <View style={[
         style,
-        { borderColor: pressed ? theme?.primary : style?.borderColor },
+        { borderColor: pressed ? theme?.primary : flatStyle.borderColor },
         pressed && { shadowColor: theme?.primary, shadowOpacity: 0.35, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
       ]}>{children}</View>
     </Pressable>
@@ -85,7 +86,7 @@ function BookingsTab({ userId, theme }) {
           const isPending = item.status === 'PAYMENT_PENDING';
           const isExpired = item.paymentExpiresAt && new Date(item.paymentExpiresAt) < new Date();
           return (
-            <AnimatedCard theme={theme} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <AnimatedCard theme={theme} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.card }]}>
               {event.image ? <Image source={{ uri: event.image }} style={styles.eventImg} /> : null}
               <View style={styles.cardBody}>
                 <View style={styles.cardHeader}>
@@ -630,6 +631,74 @@ function AdminRequestsTab({ theme }) {
   );
 }
 
+// ── Expired Events tab (admin/superAdmin only) ───────────────────────────────
+function ExpiredEventsTab({ userRole, theme }) {
+  const [events, setEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetch = useCallback(async () => {
+    try {
+      const res = await getExpiredEvents(userRole);
+      setEvents(res.data || []);
+    } catch (_) {}
+    setLoading(false); setRefreshing(false);
+  }, [userRole]);
+
+  useEffect(() => { fetch(); }, [fetch]);
+
+  if (loading) return <FlatList data={[1,2,3]} keyExtractor={i=>String(i)} contentContainerStyle={styles.list} renderItem={() => <BookingCardSkeleton />} />;
+
+  return (
+    <FlatList
+      data={events}
+      keyExtractor={i => i._id}
+      contentContainerStyle={styles.list}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetch(); }} tintColor={theme.primary} />}
+      ListEmptyComponent={<View style={styles.empty}><Text style={[styles.emptyText, { color: theme.textMuted }]}>No expired events</Text></View>}
+      renderItem={({ item }) => {
+        const isMultiDay = item.eventType === 'multi-day';
+        const booked = item.totalSeats - item.availableSeats;
+        const revenue = isMultiDay ? null : booked * (item.amount || 0);
+        return (
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            {item.image
+              ? <Image source={{ uri: item.image }} style={styles.eventImg} />
+              : null}
+            <View style={[styles.expiredBadgeRow]}>
+              <View style={[styles.typeBadge, { backgroundColor: '#6b728022', borderColor: '#6b7280' }]}>
+                <Text style={[styles.typeBadgeText, { color: '#6b7280' }]}>Expired</Text>
+              </View>
+              <View style={[styles.typeBadge, { backgroundColor: item.type === 'private' ? theme.warning + '22' : theme.success + '22', borderColor: item.type === 'private' ? theme.warning : theme.success, marginLeft: 6 }]}>
+                <Text style={[styles.typeBadgeText, { color: item.type === 'private' ? theme.warning : theme.success }]}>{item.type === 'private' ? '🔒 Private' : '🌍 Public'}</Text>
+              </View>
+            </View>
+            <View style={styles.cardBody}>
+              <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.name}</Text>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>Date</Text><Text style={[styles.detailValue, { color: theme.text }]}>
+                {isMultiDay && item.endDate
+                  ? `${new Date(item.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} → ${new Date(item.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+                  : new Date(item.eventDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              </Text></View>
+              {item.createdBy && <View style={styles.detailRow}><Text style={styles.detailLabel}>Organizer</Text><Text style={[styles.detailValue, { color: theme.text }]}>{item.createdBy.name}</Text></View>}
+              {item.approvedBy && <View style={styles.detailRow}><Text style={styles.detailLabel}>Approved By</Text><Text style={[styles.detailValue, { color: theme.text }]}>{item.approvedBy.name}</Text></View>}
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>Total Seats</Text><Text style={[styles.detailValue, { color: theme.text }]}>{item.totalSeats}</Text></View>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>Seats Sold</Text><Text style={[styles.detailValue, { color: theme.text }]}>{booked} / {item.totalSeats}</Text></View>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>Ticket Price</Text><Text style={[styles.detailValue, { color: theme.primary, fontWeight: '700' }]}>
+                {isMultiDay
+                  ? `🎟️ ₹${item.passOptions?.dailyPass?.price || 0}  ·  🌟 ₹${item.passOptions?.seasonPass?.price || 0}`
+                  : (item.amount || 0) > 0 ? `₹${item.amount}` : 'Free'}
+              </Text></View>
+              {revenue !== null && <View style={styles.detailRow}><Text style={styles.detailLabel}>Total Revenue</Text><Text style={[styles.detailValue, { color: theme.success, fontWeight: '700' }]}>₹{revenue}</Text></View>}
+              {item.creationCharge > 0 && <View style={styles.detailRow}><Text style={styles.detailLabel}>Platform Fee</Text><Text style={[styles.detailValue, { color: theme.text }]}>₹{item.creationCharge}</Text></View>}
+            </View>
+          </View>
+        );
+      }}
+    />
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function MyBookingsScreen({ navigation }) {
   const { user } = useAuth();
@@ -640,6 +709,7 @@ export default function MyBookingsScreen({ navigation }) {
   const tabs = [
     { key: 'bookings', label: 'My Bookings' },
     ...(role === 'admin' || role === 'superAdmin' ? [{ key: 'events', label: 'My Events' }] : []),
+    ...(role === 'admin' || role === 'superAdmin' ? [{ key: 'expired', label: 'Expired Events' }] : []),
     { key: 'requests', label: role === 'user' ? 'My Requests' : 'Event Requests' },
     ...(role === 'superAdmin' ? [{ key: 'adminRequests', label: 'Admin Requests' }] : []),
   ];
@@ -657,6 +727,7 @@ export default function MyBookingsScreen({ navigation }) {
       <TabBar tabs={tabs} active={activeTab} onPress={setActiveTab} theme={theme} />
       {activeTab === 'bookings' && <BookingsTab userId={userId} theme={theme} />}
       {activeTab === 'events' && <MyEventsTab userId={userId} userRole={role} theme={theme} navigation={navigation} />}
+      {activeTab === 'expired' && <ExpiredEventsTab userRole={role} theme={theme} />}
       {activeTab === 'requests' && <RequestsTab userId={userId} userRole={role} theme={theme} navigation={navigation} />}
       {activeTab === 'adminRequests' && <AdminRequestsTab theme={theme} />}
     </SafeAreaView>
@@ -704,6 +775,6 @@ const styles = StyleSheet.create({
   viewBookingsBtnText: { color: '#fff', fontWeight: '700', fontSize: font.sm },
   bookingsTable: { marginTop: spacing.sm, borderRadius: radius.sm, borderWidth: 1, padding: spacing.sm },
   bookingsTableTitle: { fontWeight: '700', fontSize: font.sm, marginBottom: spacing.sm },
-  bookingRow: { flexDirection: 'row', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth },
+  expiredBadgeRow: { flexDirection: 'row', padding: spacing.sm, paddingBottom: 0 },
   bookingRowText: { fontSize: font.xs },
 });
