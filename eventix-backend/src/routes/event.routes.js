@@ -12,6 +12,7 @@ const {
   createEvent,
   getEventById,
   getAllPublicEvents,
+  getExpiredEvents,
   getMyEvents,
   updateEventImage,
   updateEventDetails,
@@ -44,13 +45,8 @@ router.post("/sync-all", syncAllEvents);
 // Handler: getAllPublicEvents function
 // Response: {success: true, data: [events]}
 router.get("/", getAllPublicEvents);
-
-// ROUTE 2.5: GET /api/events/my-events
-// Purpose: Get events created by user
-// Handler: getMyEvents function
-// Query param: userId
-// Response: {success: true, data: [events]}
 router.get("/my-events", getMyEvents);
+router.get("/expired", getExpiredEvents);
 
 // ROUTE 3: GET /api/events/:id
 // Purpose: Get event details by ID

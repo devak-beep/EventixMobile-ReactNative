@@ -111,7 +111,14 @@ export default function EventListScreen({ navigation }) {
 
   useEffect(() => {
     if (searchMode !== 'public') return;
-    let list = events;
+    const now = new Date();
+    let list = events.filter(e => {
+      const isMultiDay = e.eventType === 'multi-day';
+      const expiry = isMultiDay && e.endDate
+        ? new Date(new Date(e.endDate).setHours(23, 59, 59, 999))
+        : new Date(e.eventDate);
+      return expiry > now;
+    });
     if (category !== 'all') list = list.filter(e => e.category?.includes(category));
     if (publicSearch.trim()) {
       const q = publicSearch.toLowerCase();

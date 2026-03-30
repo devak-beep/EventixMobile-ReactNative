@@ -158,24 +158,61 @@ exports.createEvent = async (req, res) => {
 };
 
 /**
- * Get all public events (or all events for admin)
+ * Get all public events (or all events for admin) - EXCLUDES expired events
  */
 exports.getAllPublicEvents = async (req, res) => {
   const { userRole } = req.query;
+  const now = new Date();
 
-  // Admin and superAdmin see all events (public + private), users see only public
-  const filter =
+  const notExpiredFilter = {
+    $or: [
+      { eventType: "multi-day", endDate: { $gt: now } },
+      { eventType: { $ne: "multi-day" }, eventDate: { $gt: now } },
+      { eventType: "multi-day", endDate: null, eventDate: { $gt: now } },
+    ],
+  };
+
+  const typeFilter =
     userRole === "admin" || userRole === "superAdmin" ? {} : { type: "public" };
+
+  const filter = { ...typeFilter, ...notExpiredFilter };
 
   const events = await Event.find(filter)
     .populate("createdBy", "name email")
     .populate("approvedBy", "name email")
-    .sort({ eventDate: 1 }); // Sort by event date (earliest first)
+    .sort({ eventDate: 1 });
 
   res.status(200).json({
     success: true,
     data: events,
   });
+};
+
+/**
+ * Get expired events (admin/superAdmin only)
+ */
+exports.getExpiredEvents = async (req, res) => {
+  const { userRole } = req.query;
+
+  if (userRole !== "admin" && userRole !== "superAdmin") {
+    return res.status(403).json({ success: false, message: "Only admins can view expired events" });
+  }
+
+  const now = new Date();
+  const expiredFilter = {
+    $or: [
+      { eventType: "multi-day", endDate: { $lte: now } },
+      { eventType: { $ne: "multi-day" }, eventDate: { $lte: now } },
+      { eventType: "multi-day", endDate: null, eventDate: { $lte: now } },
+    ],
+  };
+
+  const events = await Event.find(expiredFilter)
+    .populate("createdBy", "name email")
+    .populate("approvedBy", "name email")
+    .sort({ eventDate: -1 });
+
+  res.status(200).json({ success: true, data: events });
 };
 
 /**

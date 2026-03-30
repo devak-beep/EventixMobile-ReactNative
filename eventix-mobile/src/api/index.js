@@ -22,6 +22,7 @@ export const getAllPublicEvents = (userRole = 'user') => api.get('/events', { pa
 export const getEventById = (id) => api.get(`/events/${id}`).then(r => r.data);
 export const createEvent = (data) => api.post('/events', data).then(r => r.data);
 export const getMyEvents = (userId) => api.get('/events/my-events', { params: { userId } }).then(r => r.data);
+export const getExpiredEvents = (userRole) => api.get('/events/expired', { params: { userRole } }).then(r => r.data);
 export const updateEventImage = (eventId, data) => api.patch(`/events/${eventId}/image`, data).then(r => r.data);
 export const updateEventDetails = (eventId, data) => api.patch(`/events/${eventId}/details`, data).then(r => r.data);
 export const deleteEvent = (eventId, data) => api.delete(`/events/${eventId}`, { data }).then(r => r.data);
